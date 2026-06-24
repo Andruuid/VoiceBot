@@ -1,0 +1,7 @@
+fastapi>=0.115
+uvicorn[standard]>=0.34
+
+# Phase 2 (echte Transkription auf der GPU):
+# faster-whisper>=1.1
+# torch  -> CUDA-Build für RTX 5080 (Blackwell, sm_120): cu128-Wheel verwenden,
+#           z.B. pip install torch --index-url https://download.pytorch.org/whl/cu128

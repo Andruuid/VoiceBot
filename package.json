@@ -1,0 +1,22 @@
+{
+  "name": "voicebot",
+  "private": true,
+  "packageManager": "pnpm@11.0.9",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev:web": "pnpm --filter @voicebot/web dev",
+    "dev:agent": "pnpm --filter @voicebot/agent dev",
+    "build": "pnpm -r build",
+    "db:generate": "pnpm --filter @voicebot/db generate",
+    "db:push": "pnpm --filter @voicebot/db push",
+    "db:migrate": "pnpm --filter @voicebot/db migrate",
+    "infra:up": "docker compose up -d",
+    "infra:down": "docker compose down",
+    "infra:logs": "docker compose logs -f"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0"
+  }
+}

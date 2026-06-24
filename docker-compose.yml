@@ -1,0 +1,36 @@
+# Infrastruktur für lokale Entwicklung — nur Dienste OHNE GPU.
+# Die GPU-Modelldienste (STT/TTS) laufen direkt auf dem Host (CUDA), siehe README.
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: voicebot-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: voicebot
+      POSTGRES_PASSWORD: voicebot
+      POSTGRES_DB: voicebot
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U voicebot"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # LiveKit im Dev-Modus: feste Credentials (API key "devkey" / secret "secret"),
+  # kein Redis nötig. Nur für lokale Entwicklung gedacht.
+  livekit:
+    image: livekit/livekit-server:latest
+    container_name: voicebot-livekit
+    restart: unless-stopped
+    command: --dev --bind 0.0.0.0
+    ports:
+      - "7880:7880"      # HTTP / WebSocket (Signaling)
+      - "7881:7881"      # TCP (WebRTC Fallback)
+      - "7882:7882/udp"  # UDP (WebRTC Medien)
+
+volumes:
+  postgres-data:

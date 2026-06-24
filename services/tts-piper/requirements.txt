@@ -1,0 +1,5 @@
+fastapi>=0.115
+uvicorn[standard]>=0.34
+
+# Phase 2 (echte Synthese):
+# piper-tts>=1.2
