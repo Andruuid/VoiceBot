@@ -8,8 +8,9 @@ hochgeladenes Handbuch und frei per System-Prompt konfigurierbar.
 je per Config austauschbar (lokal ⇄ Cloud), Hochdeutsch zuerst, Schweizerdeutsch
 vorbereitet. Details: [Spezifikation.md](./Spezifikation.md).
 
-> Status: **Phase 2 (Voice-Loop)** — Sprechen mit dem Bot im Browser (Hochdeutsch),
-> CPU-lokal (faster-whisper + Piper, kein CUDA nötig). Text-Chat aus Phase 1 bleibt.
+> Status: **Phase 3 (Austauschbarkeit)** — Pipeline (STT/LLM/TTS) pro Bot im UI umschaltbar.
+> LLM lokal⇄Cloud (LM Studio ⇄ OpenRouter) ist aktiv; Cloud-Adapter für STT/TTS folgen.
+> Voice-Loop (Phase 2) läuft CPU-lokal (faster-whisper + Piper, kein CUDA nötig).
 
 ## Stack
 

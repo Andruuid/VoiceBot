@@ -14,7 +14,9 @@ export function BotEditor({ bot, documents }: { bot: Bot; documents: DocumentRow
   const [name, setName] = useState(bot.name);
   const [systemPrompt, setSystemPrompt] = useState(bot.systemPrompt);
   const [instructions, setInstructions] = useState(bot.instructions);
+  const [stt, setStt] = useState<PipelineConfig["stt"]>(bot.pipeline.stt);
   const [llm, setLlm] = useState<PipelineConfig["llm"]>(bot.pipeline.llm);
+  const [tts, setTts] = useState<PipelineConfig["tts"]>(bot.pipeline.tts);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
 
@@ -29,7 +31,7 @@ export function BotEditor({ bot, documents }: { bot: Bot; documents: DocumentRow
           name,
           systemPrompt,
           instructions,
-          pipeline: { ...bot.pipeline, llm },
+          pipeline: { stt, llm, tts },
         }),
       });
       setStatus(res.ok ? "Gespeichert ✓" : "Fehler beim Speichern");
@@ -87,6 +89,54 @@ export function BotEditor({ bot, documents }: { bot: Bot; documents: DocumentRow
 
       <fieldset className="space-y-3 rounded-lg border border-neutral-800 p-3">
         <legend className="px-1 text-xs font-medium uppercase tracking-wider text-neutral-500">
+          STT (Spracherkennung)
+        </legend>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <span className={label}>Provider</span>
+            <select
+              className={field}
+              value={stt.provider}
+              onChange={(e) =>
+                setStt({ ...stt, provider: e.target.value as PipelineConfig["stt"]["provider"] })
+              }
+            >
+              <option value="local-whisper">faster-whisper (lokal)</option>
+              <option value="deepgram">Deepgram (Cloud)</option>
+            </select>
+          </div>
+          <div>
+            <span className={label}>Sprache</span>
+            <input
+              className={field}
+              value={stt.language}
+              onChange={(e) => setStt({ ...stt, language: e.target.value })}
+            />
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <span className={label}>Modell</span>
+            <input
+              className={field}
+              value={stt.model}
+              onChange={(e) => setStt({ ...stt, model: e.target.value })}
+            />
+          </div>
+          <div>
+            <span className={label}>Service-URL</span>
+            <input
+              className={field}
+              placeholder="http://localhost:8001"
+              value={stt.serviceUrl ?? ""}
+              onChange={(e) => setStt({ ...stt, serviceUrl: e.target.value || undefined })}
+            />
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset className="space-y-3 rounded-lg border border-neutral-800 p-3">
+        <legend className="px-1 text-xs font-medium uppercase tracking-wider text-neutral-500">
           LLM-Pipeline
         </legend>
         <div className="grid grid-cols-2 gap-3">
@@ -133,6 +183,60 @@ export function BotEditor({ bot, documents }: { bot: Bot; documents: DocumentRow
           />
         </div>
       </fieldset>
+
+      <fieldset className="space-y-3 rounded-lg border border-neutral-800 p-3">
+        <legend className="px-1 text-xs font-medium uppercase tracking-wider text-neutral-500">
+          TTS (Sprachausgabe)
+        </legend>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <span className={label}>Provider</span>
+            <select
+              className={field}
+              value={tts.provider}
+              onChange={(e) =>
+                setTts({ ...tts, provider: e.target.value as PipelineConfig["tts"]["provider"] })
+              }
+            >
+              <option value="local-piper">Piper (lokal)</option>
+              <option value="elevenlabs">ElevenLabs (Cloud)</option>
+            </select>
+          </div>
+          <div>
+            <span className={label}>Sprache</span>
+            <input
+              className={field}
+              value={tts.language}
+              onChange={(e) => setTts({ ...tts, language: e.target.value })}
+            />
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <span className={label}>Stimme</span>
+            <input
+              className={field}
+              value={tts.voice}
+              onChange={(e) => setTts({ ...tts, voice: e.target.value })}
+            />
+          </div>
+          <div>
+            <span className={label}>Service-URL</span>
+            <input
+              className={field}
+              placeholder="http://localhost:8002"
+              value={tts.serviceUrl ?? ""}
+              onChange={(e) => setTts({ ...tts, serviceUrl: e.target.value || undefined })}
+            />
+          </div>
+        </div>
+      </fieldset>
+
+      <p className="text-xs text-neutral-600">
+        Lokal ⇄ Cloud pro Komponente umschaltbar. LLM-Wechsel (LM Studio ⇄ OpenRouter) ist aktiv;
+        Cloud-Adapter für STT/TTS (Deepgram/ElevenLabs) folgen — der Voice-Agent nutzt dafür bis dahin
+        die lokalen Dienste.
+      </p>
 
       <div>
         <span className={label}>Wissensdatenbank (Handbuch)</span>

@@ -75,6 +75,24 @@ def _build_llm(llm_cfg: dict) -> openai.LLM:
     )
 
 
+def _build_stt(stt_cfg: dict) -> WhisperSTT:
+    """STT gemäß Bot-Config. Cloud (deepgram) noch nicht implementiert → lokaler Fallback."""
+    provider = stt_cfg.get("provider", "local-whisper")
+    base_url = stt_cfg.get("serviceUrl") or STT_SERVICE_URL
+    if provider != "local-whisper":
+        logger.warning("STT-Provider '%s' noch nicht implementiert — nutze lokalen faster-whisper.", provider)
+    return WhisperSTT(base_url=base_url, language=stt_cfg.get("language", "de"))
+
+
+def _build_tts(tts_cfg: dict) -> PiperTTS:
+    """TTS gemäß Bot-Config. Cloud (elevenlabs) noch nicht implementiert → lokaler Fallback."""
+    provider = tts_cfg.get("provider", "local-piper")
+    base_url = tts_cfg.get("serviceUrl") or TTS_SERVICE_URL
+    if provider != "local-piper":
+        logger.warning("TTS-Provider '%s' noch nicht implementiert — nutze lokalen Piper.", provider)
+    return PiperTTS(base_url=base_url, voice=tts_cfg.get("voice", "de_DE-thorsten-high"))
+
+
 async def entrypoint(ctx: JobContext) -> None:
     await ctx.connect()
 
@@ -88,14 +106,11 @@ async def entrypoint(ctx: JobContext) -> None:
     system_prefix = context["systemPrefix"]
     pipeline = context["pipeline"]
 
-    stt_cfg = pipeline.get("stt", {})
-    tts_cfg = pipeline.get("tts", {})
-
     session = AgentSession(
         vad=silero.VAD.load(),
-        stt=WhisperSTT(base_url=STT_SERVICE_URL, language=stt_cfg.get("language", "de")),
+        stt=_build_stt(pipeline.get("stt", {})),
         llm=_build_llm(pipeline.get("llm", {})),
-        tts=PiperTTS(base_url=TTS_SERVICE_URL, voice=tts_cfg.get("voice", "de_DE-thorsten-high")),
+        tts=_build_tts(pipeline.get("tts", {})),
     )
 
     await session.start(agent=Agent(instructions=system_prefix), room=ctx.room)

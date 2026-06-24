@@ -274,6 +274,8 @@ Referenzen: STT4SG-350 (arXiv 2305.18855), SDS-200, Voice Adaptation for Swiss G
   - Hinweis: Wenn STT+TTS+LLM **gleichzeitig lokal** laufen, wird VRAM knapp → ggf. LLM in Cloud (OpenRouter) und nur STT/TTS lokal.
 - [ ] Auth/Mehrbenutzer ab welcher Phase?
 - [ ] Default-Piper-Stimme (Hochdeutsch) festlegen.
+- [ ] Cloud-STT/TTS-Adapter (Deepgram/ElevenLabs) im Python-Agent. Die Pipeline-Config-UI bietet die
+  Wahl bereits (Phase 3); der Agent nutzt für STT/TTS bis dahin die lokalen Dienste (klarer Warn-Log).
 
 ---
 
