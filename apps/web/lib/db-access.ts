@@ -1,10 +1,11 @@
-import { db, bots, documents } from "@voicebot/db";
-import { eq, desc } from "drizzle-orm";
+import { db, bots, documents, conversations, messages } from "@voicebot/db";
+import { eq, asc, desc } from "drizzle-orm";
 import { pipelineConfigSchema, type PipelineConfig } from "@voicebot/core";
 import { defaultPipelineFromEnv } from "./pipeline-defaults";
 
 export type Bot = typeof bots.$inferSelect;
 export type DocumentRow = typeof documents.$inferSelect;
+export type MessageRow = typeof messages.$inferSelect;
 
 export async function listBots(): Promise<Bot[]> {
   return db.select().from(bots).orderBy(desc(bots.createdAt));
@@ -72,4 +73,27 @@ export async function addDocument(
 
 export async function deleteDocument(id: string): Promise<void> {
   await db.delete(documents).where(eq(documents.id, id));
+}
+
+// ─── Gesprächs-/Transkript-Persistenz ───────────────────────────────────────
+
+export async function createConversation(botId: string): Promise<string> {
+  const rows = await db.insert(conversations).values({ botId }).returning();
+  return rows[0]!.id;
+}
+
+export async function addMessage(
+  conversationId: string,
+  role: "user" | "assistant" | "system",
+  text: string,
+): Promise<void> {
+  await db.insert(messages).values({ conversationId, role, text });
+}
+
+export async function listMessages(conversationId: string): Promise<MessageRow[]> {
+  return db
+    .select()
+    .from(messages)
+    .where(eq(messages.conversationId, conversationId))
+    .orderBy(asc(messages.createdAt));
 }

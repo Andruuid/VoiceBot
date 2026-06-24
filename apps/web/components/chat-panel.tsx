@@ -13,6 +13,9 @@ export function ChatPanel({ botId }: { botId: string }) {
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  // Gespräch über die Turns hinweg festhalten, damit der Verlauf in einer
+  // conversation/messages-Zeile in der DB landet (Server vergibt die Id beim 1. Turn).
+  const conversationIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
@@ -35,10 +38,17 @@ export function ChatPanel({ botId }: { botId: string }) {
       const res = await fetch(`/api/bots/${botId}/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text, history }),
+        body: JSON.stringify({
+          message: text,
+          history,
+          conversationId: conversationIdRef.current,
+        }),
       });
       const data = await res.json();
       if (res.ok) {
+        if (typeof data.conversationId === "string") {
+          conversationIdRef.current = data.conversationId;
+        }
         setMessages((prev) => [
           ...prev,
           { role: "assistant", content: data.text, usage: data.usage },
