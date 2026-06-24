@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getBot, listDocuments } from "@/lib/db-access";
 import { BotEditor } from "@/components/bot-editor";
-import { ChatPanel } from "@/components/chat-panel";
+import { ConversationTabs } from "@/components/conversation-tabs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -29,9 +29,9 @@ export default async function BotPage({ params }: { params: Promise<{ id: string
         </section>
         <section>
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-neutral-500">
-            Chat
+            Gespräch
           </h2>
-          <ChatPanel botId={bot.id} />
+          <ConversationTabs botId={bot.id} />
         </section>
       </div>
     </main>

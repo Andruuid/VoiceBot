@@ -41,7 +41,8 @@ Ein **Voice-Call-Agent**, mit dem man **per Sprache redet** und der **Fragen zu 
 
 ## 3. Architektur-Überblick
 
-Vier klar getrennte Schichten. Python ist nur in den GPU-Modell-Diensten — alles andere TypeScript.
+Vier klar getrennte Schichten. Frontend/API/Backend sind TypeScript; der **Voice-Agent ist Python**
+(LiveKit Agents SDK) ebenso wie die Modell-Dienste (siehe Entscheidung in §11).
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -50,7 +51,7 @@ Vier klar getrennte Schichten. Python ist nur in den GPU-Modell-Diensten — all
 └───────────────┬───────────────────────────┬──────────────────┘
                 │ REST/tRPC (CRUD)           │ WebRTC (Audio)
 ┌───────────────▼──────────────┐  ┌──────────▼──────────────────┐
-│ 2. Backend-API (Node/TS)     │  │ 3. Voice-Agent (LiveKit, TS) │
+│ 2. Backend-API (Node/TS)     │  │ 3. Voice-Agent (LiveKit, Py) │
 │    Bots, KB, Config, RAG-    │  │    VAD · Turn-Taking · STT→  │
 │    Indexierung, Auth(später) │  │    LLM→TTS-Loop pro Session  │
 └───────────────┬──────────────┘  └──────────┬──────────────────┘
@@ -196,7 +197,7 @@ Message
 | Backend-API | **Next.js Route Handlers** (MVP) → später eigener Node-Service | weniger Teile am Anfang |
 | Typsicherheit Client↔Server | **tRPC** oder Zod-validierte Routes | Ende-zu-Ende-Typen |
 | DB / ORM | **Postgres**, **Drizzle ORM** | relationale Daten (Bots/Docs/Verlauf); pgvector erst bei RAG |
-| Realtime-Voice | **LiveKit Server + LiveKit Agents (TS-SDK)** | WebRTC, Turn-Taking, Telefonie-ready |
+| Realtime-Voice | **LiveKit Server + LiveKit Agents (Python-SDK)** | WebRTC, Turn-Taking, Telefonie-ready (reiferes SDK, siehe §11) |
 | LLM | **OpenRouter** / **LM Studio** (OpenAI-kompatibel) | austauschbar per baseURL |
 | STT lokal | **faster-whisper** (FastAPI-Dienst) | schnell, GPU, ZH-Finetune-fähig |
 | STT cloud | **Deepgram** | Latenz/Qualität |
@@ -214,7 +215,7 @@ Message
 voicebot/
 ├─ apps/
 │  ├─ web/                 # Next.js: UI + API Route Handlers
-│  └─ agent/               # LiveKit Agent (TS) — der Voice-Worker
+│  └─ agent/               # LiveKit Agent (Python) — der Voice-Worker
 ├─ packages/
 │  ├─ core/                # gemeinsame Typen, Pipeline-Schema, Provider-Registry, Adapter
 │  └─ db/                  # Drizzle-Schema + Client
@@ -246,7 +247,7 @@ Referenzen: STT4SG-350 (arXiv 2305.18855), SDS-200, Voice Adaptation for Swiss G
 |---|---|---|
 | **0 — Setup** | Monorepo, Docker Compose (LiveKit + Postgres), .env | „Hello World“-Stack läuft |
 | **1 — Text-Bot** | Bot-CRUD-UI, KB-Upload, RAG, LLM-Adapter (OpenRouter/LM Studio), **Text-Chat** | Bot beantwortet Fragen per Text |
-| **2 — Voice-Loop** | LiveKit-Agent, STT/TTS-Adapter, Browser-Mic, Live-Gespräch + Transkript | Sprechen mit dem Bot (Hochdeutsch) |
+| **2 — Voice-Loop** | LiveKit-Agent (Python), STT/TTS-Adapter (CPU), Browser-Mic, Live-Gespräch + Transkript | Sprechen mit dem Bot (Hochdeutsch) |
 | **3 — Austauschbarkeit** | Pipeline-Config-UI, lokal⇄Cloud-Schalter, lokale Py-Dienste fertig | Modelle per Klick wechselbar |
 | **4 — Politur** | Latenz-Tuning, Barge-in, Fehlerfälle, Persistenz | vorzeigbarer MVP |
 | **5 — Schweizerdeutsch** | STT-Finetune + Dialekt-TTS einhängen | ZH-Sprachbetrieb |
@@ -260,6 +261,12 @@ Referenzen: STT4SG-350 (arXiv 2305.18855), SDS-200, Voice Adaptation for Swiss G
 - ✅ **LiveKit selbst-gehostet in Docker** (`--dev`-Modus für lokale Entwicklung), keine Cloud-Pflicht.
 - ✅ **Keine harten Abhängigkeiten von externen Diensten** — alles muss lokal laufen (LM Studio + faster-whisper + Piper + Docker). OpenRouter/Deepgram/ElevenLabs sind optionale Adapter.
 - ✅ **Embeddings: Start mit LM Studio** (OpenAI-kompatibel), Provider bleibt abstrahiert, spätere Wahl offen.
+- ✅ **Voice-Agent in Python statt TypeScript** (Entscheidung Phase 2): das reifere LiveKit-Agents-SDK
+  ist Python und passt zu den STT/TTS-Diensten + dem Schweizerdeutsch-Finetuning (§9). Folge: Der Agent
+  kann `@voicebot/core` nicht importieren — er holt den fertigen System-Prefix über HTTP
+  (`GET /api/bots/[id]/voice-context`), damit der Prefix byte-identisch bleibt (Caching, §6).
+- ✅ **Voice-MVP CPU-first**: faster-whisper (CTranslate2) + Piper (onnxruntime) laufen ohne PyTorch/CUDA.
+  Der GPU-/cu128-Pfad (RTX 5080, Blackwell) ist ein späterer Modell-/Geräte-Tausch, kein Umbau.
 
 **Noch offen:**
 - [ ] Embedding-Dimension hängt vom gewählten LM-Studio-Modell ab (Default im DB-Schema: **768**, z.B. `nomic-embed-text`). Bei Modellwechsel `EMBEDDING_DIM` anpassen.

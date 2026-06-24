@@ -20,6 +20,9 @@ __pycache__/
 .venv/
 venv/
 
+# heruntergeladene Modell-Assets (Piper-Stimmen etc.)
+services/tts-piper/voices/
+
 # data / volumes
 postgres-data/
 *.log

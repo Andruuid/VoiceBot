@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getBot, listDocuments } from "@/lib/db-access";
-import { callLlm, type ChatTurn } from "@voicebot/core";
+import { buildSystemPrefix, callLlm, type ChatTurn } from "@voicebot/core";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -18,16 +18,13 @@ export async function POST(req: Request, { params }: Params) {
   if (!message) return NextResponse.json({ error: "message required" }, { status: 400 });
 
   // Handbuch(er) komplett in den stabilen System-Prefix (kein RAG, siehe Spec §6).
+  // buildSystemPrefix ist die gemeinsame Quelle der Wahrheit (Web-Chat + Voice-Agent).
   const docs = await listDocuments(id);
-  const manual = docs.map((d) => `## ${d.filename}\n\n${d.rawText}`).join("\n\n---\n\n");
-
-  const systemPrefix = [
-    bot.systemPrompt,
-    bot.instructions,
-    manual ? `Wissensdatenbank (Handbuch):\n\n${manual}` : "",
-  ]
-    .filter((s) => s && s.trim())
-    .join("\n\n");
+  const systemPrefix = buildSystemPrefix({
+    systemPrompt: bot.systemPrompt,
+    instructions: bot.instructions,
+    documents: docs,
+  });
 
   const llm = bot.pipeline.llm;
   const apiKey =

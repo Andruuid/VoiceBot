@@ -8,14 +8,15 @@ hochgeladenes Handbuch und frei per System-Prompt konfigurierbar.
 je per Config austauschbar (lokal ⇄ Cloud), Hochdeutsch zuerst, Schweizerdeutsch
 vorbereitet. Details: [Spezifikation.md](./Spezifikation.md).
 
-> Status: **Phase 0 (Setup)** — Gerüst steht, Voice-Loop folgt in Phase 2.
+> Status: **Phase 2 (Voice-Loop)** — Sprechen mit dem Bot im Browser (Hochdeutsch),
+> CPU-lokal (faster-whisper + Piper, kein CUDA nötig). Text-Chat aus Phase 1 bleibt.
 
 ## Stack
 
 | Schicht | Technologie |
 |---|---|
 | Frontend / API | Next.js 15 + React 19 + TypeScript (`apps/web`) |
-| Voice-Orchestrierung | LiveKit Agents, TS (`apps/agent`) |
+| Voice-Orchestrierung | LiveKit Agents, **Python** (`apps/agent`) |
 | Geteilte Logik | `packages/core` (Pipeline-Schema), `packages/db` (Drizzle + pgvector) |
 | Modelldienste (GPU) | faster-whisper (`services/stt-whisper`), Piper (`services/tts-piper`) |
 | Infra | Docker: LiveKit + Postgres/pgvector |
@@ -50,31 +51,45 @@ pnpm db:push
 pnpm dev:web
 ```
 
-### Modelldienste (laufen auf dem Host wegen GPU/CUDA, nicht in Docker)
+### Voice-Loop starten (Phase 2)
+
+Alles **CPU-lokal** — kein PyTorch/CUDA nötig. Vier zusätzliche Prozesse neben `pnpm dev:web`
+und der Docker-Infra. Details zu den Modelldiensten: [services/README.md](./services/README.md).
 
 ```bash
-# STT
+# 1) STT-Dienst (faster-whisper, CPU)
 cd services/stt-whisper
-python -m venv .venv && .venv/Scripts/activate   # Windows
+python -m venv .venv && .venv\Scripts\Activate.ps1   # Windows PowerShell
 pip install -r requirements.txt
 uvicorn main:app --port 8001
 
-# TTS (zweites Terminal)
+# 2) TTS-Dienst (Piper, CPU) — zweites Terminal
 cd services/tts-piper
-python -m venv .venv && .venv/Scripts/activate
+python -m venv .venv && .venv\Scripts\Activate.ps1
 pip install -r requirements.txt
+python -m piper.download_voices de_DE-thorsten-high --download-dir ./voices   # einmalig
 uvicorn main:app --port 8002
+
+# 3) Voice-Agent (LiveKit Agents, Python) — drittes Terminal
+cd apps/agent
+python -m venv .venv && .venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+python agent.py dev            # oder vom Repo-Root: pnpm dev:agent
 ```
 
-> In Phase 0 sind STT/TTS Stubs (`/health` antwortet, Transkription/Synthese
-> kommen in Phase 2). GPU/CUDA-Setup für die RTX 5080 (cu128-Build) wird dann
-> ergänzt — siehe Kommentare in den `requirements.txt`.
+Danach im Browser einen Bot öffnen → Reiter **🎙 Voice** → *Gespräch starten* → Mikrofon
+erlauben → auf Hochdeutsch fragen. Der Agent holt den System-Prefix (System-Prompt + Handbuch)
+vom Web-Backend; stelle daher `WEB_BASE_URL` in `.env` auf den Port deines Frontends (Default 3100).
+
+> **GPU später:** Für die RTX 5080 (Blackwell, sm_120) und den Schweizerdeutsch-Finetune wird
+> faster-whisper/Piper auf den GPU-Pfad (cu128) umgestellt — reiner Modell-/Geräte-Tausch,
+> siehe Kommentare in den `requirements.txt` und Spezifikation §9.
 
 ## Nützliche Befehle
 
 ```bash
 pnpm infra:up / infra:down / infra:logs   # Docker steuern
 pnpm dev:web                              # Next.js Dev-Server
-pnpm dev:agent                            # LiveKit-Agent (Phase-0-Stub)
+pnpm dev:agent                            # Voice-Agent (Python, via apps/agent/.venv)
 pnpm db:push / db:generate / db:migrate   # Drizzle-Schema
 ```

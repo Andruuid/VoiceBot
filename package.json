@@ -7,7 +7,7 @@
   },
   "scripts": {
     "dev:web": "pnpm --filter @voicebot/web dev",
-    "dev:agent": "pnpm --filter @voicebot/agent dev",
+    "dev:agent": "apps/agent/.venv/Scripts/python.exe apps/agent/agent.py dev",
     "build": "pnpm -r build",
     "db:generate": "pnpm --filter @voicebot/db generate",
     "db:push": "pnpm --filter @voicebot/db push",

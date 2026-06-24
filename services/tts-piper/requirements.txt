@@ -1,5 +1,6 @@
 fastapi>=0.115
 uvicorn[standard]>=0.34
+pydantic>=2
 
-# Phase 2 (echte Synthese):
-# piper-tts>=1.2
+# Phase 2 — CPU-first: Piper nutzt onnxruntime, KEIN PyTorch/CUDA nötig.
+piper-tts>=1.2
