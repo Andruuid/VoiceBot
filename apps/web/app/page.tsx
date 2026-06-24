@@ -1,57 +1,62 @@
-import { defaultPipeline } from "@voicebot/core";
+import Link from "next/link";
+import { listBots, type Bot } from "@/lib/db-access";
+import { NewBotForm } from "@/components/new-bot-form";
 
-const phases = [
-  { n: 0, title: "Setup", desc: "Monorepo, Docker (LiveKit + Postgres), .env", done: true },
-  { n: 1, title: "Text-Bot", desc: "Bot-CRUD, KB-Upload, RAG, Text-Chat", done: false },
-  { n: 2, title: "Voice-Loop", desc: "LiveKit-Agent, STT/TTS, Browser-Mic", done: false },
-  { n: 3, title: "Austauschbarkeit", desc: "Pipeline-Config-UI, lokal ⇄ Cloud", done: false },
-  { n: 4, title: "Politur", desc: "Latenz, Barge-in, Persistenz", done: false },
-  { n: 5, title: "Schweizerdeutsch", desc: "STT-Finetune + Dialekt-TTS", done: false },
-];
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
-export default function Home() {
+export default async function Home() {
+  let bots: Bot[] = [];
+  let dbError: string | null = null;
+  try {
+    bots = await listBots();
+  } catch (e) {
+    dbError = e instanceof Error ? e.message : String(e);
+  }
+
   return (
-    <main className="mx-auto max-w-3xl px-6 py-16">
-      <h1 className="text-4xl font-bold tracking-tight">VoiceBot</h1>
-      <p className="mt-3 text-neutral-400">
-        Konfigurierbarer Voice-Call-Agent mit Wissensdatenbank — lokal lauffähig,
-        Provider austauschbar.
+    <main className="mx-auto max-w-2xl px-6 py-16">
+      <h1 className="text-3xl font-bold tracking-tight">VoiceBot</h1>
+      <p className="mt-2 text-neutral-400">
+        Erstelle Bots, lade ein Handbuch hoch und stelle Fragen dazu.
       </p>
 
-      <section className="mt-10">
-        <h2 className="text-sm font-semibold uppercase tracking-wider text-neutral-500">
-          Roadmap
-        </h2>
-        <ul className="mt-4 space-y-2">
-          {phases.map((p) => (
-            <li
-              key={p.n}
-              className="flex items-start gap-3 rounded-lg border border-neutral-800 bg-neutral-900/50 px-4 py-3"
-            >
-              <span
-                className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
-                  p.done ? "bg-emerald-500 text-black" : "bg-neutral-800 text-neutral-400"
-                }`}
-              >
-                {p.done ? "✓" : p.n}
-              </span>
-              <div>
-                <div className="font-medium">Phase {p.n}: {p.title}</div>
-                <div className="text-sm text-neutral-500">{p.desc}</div>
-              </div>
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      <section className="mt-10">
-        <h2 className="text-sm font-semibold uppercase tracking-wider text-neutral-500">
-          Default-Pipeline (komplett lokal)
-        </h2>
-        <pre className="mt-4 overflow-x-auto rounded-lg border border-neutral-800 bg-neutral-900/50 p-4 text-xs text-neutral-300">
-          {JSON.stringify(defaultPipeline, null, 2)}
-        </pre>
-      </section>
+      {dbError ? (
+        <div className="mt-8 rounded-lg border border-amber-800 bg-amber-950/30 p-4 text-sm text-amber-200">
+          <p className="font-medium">Keine Datenbankverbindung.</p>
+          <p className="mt-1 text-amber-300/80">
+            Starte die Infrastruktur und lege das Schema an:
+          </p>
+          <pre className="mt-2 rounded bg-black/40 p-2 text-xs">
+            pnpm infra:up{"\n"}pnpm db:push
+          </pre>
+          <p className="mt-2 text-xs text-amber-300/60">{dbError}</p>
+        </div>
+      ) : (
+        <>
+          <div className="mt-8">
+            <NewBotForm />
+          </div>
+          <ul className="mt-6 space-y-2">
+            {bots.length === 0 && (
+              <li className="text-sm text-neutral-600">Noch keine Bots — erstelle den ersten.</li>
+            )}
+            {bots.map((b) => (
+              <li key={b.id}>
+                <Link
+                  href={`/bots/${b.id}`}
+                  className="block rounded-lg border border-neutral-800 bg-neutral-900/50 px-4 py-3 hover:border-neutral-600"
+                >
+                  <span className="font-medium">{b.name}</span>
+                  <span className="ml-2 text-xs text-neutral-600">
+                    {b.pipeline.llm.provider} · {b.pipeline.llm.model}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
     </main>
   );
 }

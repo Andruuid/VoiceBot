@@ -23,9 +23,13 @@ vorbereitet. Details: [Spezifikation.md](./Spezifikation.md).
 
 ## Voraussetzungen
 
-Node ≥ 20, pnpm, Python ≥ 3.11, Docker (Desktop). Für Voice zusätzlich
-[LM Studio](https://lmstudio.ai) mit geladenem Chat- **und** Embedding-Modell
-(Server auf Port 1234).
+Node ≥ 20, pnpm, Python ≥ 3.11, Docker (Desktop). Für den Chat zusätzlich
+[LM Studio](https://lmstudio.ai): Modell laden **und** den lokalen Server starten
+(Tab *Developer* → *Start Server*, Port 1234). Modell nur laden reicht nicht —
+ohne gestarteten Server schlägt der Chat mit „Verbindung fehlgeschlagen" fehl.
+
+> Läuft auf Port 3000 schon etwas anderes, starte das Frontend auf einem anderen
+> Port: `PORT=3100 pnpm dev:web`.
 
 ## Setup
 

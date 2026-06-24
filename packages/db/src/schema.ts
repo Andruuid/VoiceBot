@@ -1,21 +1,9 @@
-import {
-  pgTable,
-  uuid,
-  text,
-  jsonb,
-  timestamp,
-  integer,
-  vector,
-  index,
-} from "drizzle-orm/pg-core";
+import { pgTable, uuid, text, jsonb, timestamp } from "drizzle-orm/pg-core";
 import type { PipelineConfig } from "@voicebot/core";
 
-/**
- * Dimension der Embedding-Vektoren. MUSS zum gewählten Embedding-Modell passen.
- * Default 768 (z.B. nomic-embed-text via LM Studio). Bei Modellwechsel anpassen
- * und Migration neu generieren.
- */
-export const EMBEDDING_DIM = 768;
+// Entscheidung 2026-06-24: Kein RAG/Embedding. Das Handbuch (documents.rawText)
+// wird komplett in den System-Prefix gelegt und per Prompt-Caching wiederverwendet
+// (siehe Spezifikation §6). pgvector + chunks-Tabelle erst bei Bedarf nachrüsten.
 
 /** Ein Bot = eine Instanz mit eigenem Prompt, eigener Pipeline und eigenen Daten. */
 export const bots = pgTable("bots", {
@@ -37,26 +25,6 @@ export const documents = pgTable("documents", {
   rawText: text("raw_text").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
-
-/** In Stücke zerlegtes Dokument samt Embedding für die RAG-Suche. */
-export const chunks = pgTable(
-  "chunks",
-  {
-    id: uuid("id").primaryKey().defaultRandom(),
-    documentId: uuid("document_id")
-      .notNull()
-      .references(() => documents.id, { onDelete: "cascade" }),
-    text: text("text").notNull(),
-    embedding: vector("embedding", { dimensions: EMBEDDING_DIM }),
-    ord: integer("ord").notNull(),
-  },
-  (table) => [
-    index("chunks_embedding_idx").using(
-      "hnsw",
-      table.embedding.op("vector_cosine_ops"),
-    ),
-  ],
-);
 
 /** Gesprächsverlauf (optional, für Transkripte). */
 export const conversations = pgTable("conversations", {

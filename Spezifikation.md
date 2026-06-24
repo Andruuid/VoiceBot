@@ -138,19 +138,17 @@ Bot
   pipeline      jsonb           // Config aus §4
   createdAt     timestamp
 
-Document                        // hochgeladene Wissensquelle
+Document                        // hochgeladene Wissensquelle (das Handbuch)
   id            uuid
   botId         uuid -> Bot
   filename      string
-  rawText       text
+  rawText       text             // kommt komplett in den System-Kontext (kein Chunking)
   createdAt     timestamp
 
-Chunk                           // für RAG
-  id            uuid
-  documentId    uuid -> Document
-  text          text
-  embedding     vector          // pgvector
-  ord           int
+// HINWEIS: Kein Chunk/Embedding/pgvector mehr. Entscheidung 2026-06-24:
+// Bei ~200KB-Handbüchern wird das gesamte Dokument in den System-Prefix gelegt
+// und per Prompt-Caching wiederverwendet (siehe §6). RAG erst bei Bedarf (große/
+// viele Dokumente) — dann Chunk+Embedding wieder einführen.
 
 Conversation                    // optional, Verlauf/Transkripte
   id            uuid
@@ -167,15 +165,25 @@ Message
 
 ---
 
-## 6. Wissensdatenbank / RAG
+## 6. Wissensdatenbank: Handbuch-im-Kontext + Prompt-Caching
+
+**Entscheidung (2026-06-24):** Kein RAG. Bei einem einzelnen Handbuch (~200KB ≈ 50–65K Tokens) wird das **gesamte Dokument in den System-Prefix** gelegt und per **Prompt-Caching** über die Gesprächs-Turns wiederverwendet. RAG (Chunking/Embeddings/pgvector) ist erst nötig, wenn Dokumente zu groß fürs Kontextfenster werden oder es viele werden — dann nachrüsten.
 
 1. **Upload**: Textdatei (MVP: `.txt`/`.md`; später PDF) → `Document.rawText`.
-2. **Chunking**: in überlappende Abschnitte (~500–800 Tokens, ~10 % Overlap).
-3. **Embeddings**: über denselben Provider-Schalter — lokal (Embedding-Modell via LM Studio / `sentence-transformers`-Dienst) oder Cloud (OpenRouter/OpenAI). Konfigurierbar.
-4. **Vektor-Store**: **Postgres + pgvector** (eine Abhängigkeit, robust, lokal lauffähig).
-5. **Retrieval** zur Laufzeit: Top-k Chunks per Cosine-Similarity → in den LLM-Prompt.
+2. **Prompt-Aufbau pro Bot** (strikte Reihenfolge — Caching ist ein Präfix-Match!):
+   ```
+   [ systemPrompt + instructions + GANZES Handbuch ]  ← stabil, Cache-Breakpoint hier
+   [ Gesprächsverlauf + aktuelle STT-Frage ]          ← volatil, danach
+   ```
+3. **Kein Zeitstempel / keine Session-ID** in oder vor dem Handbuch-Block — sonst bricht der Cache.
 
-> Für sehr kleine Handbücher ist auch „ganzes Dokument in den Kontext“ eine valide Option; RAG ist die skalierbare Default-Wahl.
+**Caching pro Provider (im LLM-Adapter gekapselt):**
+- **OpenRouter → Claude:** `cache_control: {type:"ephemeral"}` auf den Handbuch-Block. 5-Min-TTL (Write ~1,25×, Read ~0,1×) oder `ttl:"1h"` (Write 2×). Mindest-Cachegröße: Opus 4.8 = 4096, Sonnet/Fable = 2048 Tokens — das Handbuch liegt weit darüber.
+- **LM Studio (lokal):** kein `cache_control`; llama.cpp cacht den KV-Prefix automatisch, solange der Prefix stabil bleibt. Adapter setzt nichts.
+
+**Warum:** Für Voice ist die Latenz entscheidend — ohne Cache würden 50–65K Tokens bei *jedem* Turn neu verarbeitet (mehrere Sekunden Totzeit). Mit Cache: einmal schreiben, danach schnell/günstig lesen.
+
+> Verifizieren: `usage.cache_read_input_tokens` muss > 0 sein. Bleibt es 0, sitzt ein „silent invalidator" im Prefix (dynamischer Inhalt vor dem Breakpoint).
 
 ---
 
@@ -187,7 +195,7 @@ Message
 | UI-Kit | **Tailwind + shadcn/ui** | modern, schnell |
 | Backend-API | **Next.js Route Handlers** (MVP) → später eigener Node-Service | weniger Teile am Anfang |
 | Typsicherheit Client↔Server | **tRPC** oder Zod-validierte Routes | Ende-zu-Ende-Typen |
-| DB / ORM | **Postgres + pgvector**, **Drizzle ORM** | RAG + relational in einem |
+| DB / ORM | **Postgres**, **Drizzle ORM** | relationale Daten (Bots/Docs/Verlauf); pgvector erst bei RAG |
 | Realtime-Voice | **LiveKit Server + LiveKit Agents (TS-SDK)** | WebRTC, Turn-Taking, Telefonie-ready |
 | LLM | **OpenRouter** / **LM Studio** (OpenAI-kompatibel) | austauschbar per baseURL |
 | STT lokal | **faster-whisper** (FastAPI-Dienst) | schnell, GPU, ZH-Finetune-fähig |
