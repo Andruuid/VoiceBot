@@ -19,8 +19,10 @@ Konfiguration über Umgebungsvariablen:
 from __future__ import annotations
 
 import io
+import logging
 import os
 import wave
+from pathlib import Path
 
 from fastapi import FastAPI, Response
 from pydantic import BaseModel
@@ -29,6 +31,10 @@ try:  # Importpfad variiert je nach piper-tts-Version
     from piper.voice import PiperVoice
 except ImportError:  # pragma: no cover
     from piper import PiperVoice  # type: ignore
+
+from piper.download_voices import download_voice
+
+logger = logging.getLogger("tts-piper")
 
 VOICE_DIR = os.getenv("PIPER_VOICE_DIR", "./voices")
 DEFAULT_VOICE = os.getenv("PIPER_VOICE", "de_DE-thorsten-high")
@@ -43,11 +49,17 @@ def get_voice(name: str) -> PiperVoice:
     if name not in _voices:
         model_path = os.path.join(VOICE_DIR, f"{name}.onnx")
         config_path = f"{model_path}.json"
+        # Stimme bei Bedarf einmalig herunterladen (z.B. nach Auswahl im Dropdown).
+        # Erster Aufruf einer neuen Stimme ist dadurch langsam, danach lokal gecacht.
         if not os.path.exists(model_path):
-            raise FileNotFoundError(
-                f"Stimmen-Modell nicht gefunden: {model_path}. "
-                f"Download: python -m piper.download_voices {name} --download-dir {VOICE_DIR}"
-            )
+            logger.info("Stimme '%s' nicht lokal — lade herunter nach %s …", name, VOICE_DIR)
+            Path(VOICE_DIR).mkdir(parents=True, exist_ok=True)
+            try:
+                download_voice(name, Path(VOICE_DIR))
+            except Exception as e:  # ungültiger Name oder Netzwerkfehler
+                raise FileNotFoundError(
+                    f"Stimme '{name}' konnte nicht geladen werden: {e}"
+                ) from e
         _voices[name] = PiperVoice.load(model_path, config_path=config_path)
     return _voices[name]
 
@@ -91,7 +103,11 @@ def synthesize(req: SynthesizeRequest) -> Response:
 
     buffer = io.BytesIO()
     with wave.open(buffer, "wb") as wav_file:
-        # Piper setzt Kanäle/Samplerate/Breite selbst und schreibt die Frames.
-        voice.synthesize(text, wav_file)
+        # piper-tts >= 1.3: synthesize_wav setzt den WAV-Header (Kanäle/Samplerate/Breite)
+        # und schreibt die Frames. Ältere Versionen: synthesize(text, wav_file).
+        if hasattr(voice, "synthesize_wav"):
+            voice.synthesize_wav(text, wav_file)
+        else:  # pragma: no cover — Fallback für alte piper-tts-Versionen
+            voice.synthesize(text, wav_file)
 
     return Response(content=buffer.getvalue(), media_type="audio/wav")

@@ -26,7 +26,11 @@ services:
     image: livekit/livekit-server:latest
     container_name: voicebot-livekit
     restart: unless-stopped
-    command: --dev --bind 0.0.0.0
+    # --node-ip 127.0.0.1: ICE-Kandidaten als localhost annoncieren (Browser + Agent
+    #   laufen auf dem Host; ohne das annonciert LiveKit die Docker-interne IP → keine
+    #   Medienverbindung). --udp-port 7882: festen UDP-Mux-Port nutzen (= gemappter Port),
+    #   statt einer nicht-gemappten UDP-Range → "could not establish pc connection".
+    command: --dev --bind 0.0.0.0 --node-ip 127.0.0.1 --udp-port 7882
     ports:
       - "7880:7880"      # HTTP / WebSocket (Signaling)
       - "7881:7881"      # TCP (WebRTC Fallback)
