@@ -22,6 +22,8 @@ venv/
 
 # heruntergeladene Modell-Assets (NICHT ins Repo committen — kommen aus HF-Cache/Download)
 services/tts-piper/voices/
+# private Stimm-Referenzen fürs XTTS-Cloning (Audio nie ins Repo)
+services/tts-xtts/refs/
 services/stt-whisper/models/
 **/models/
 *.gguf

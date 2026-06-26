@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { Bot, DocumentRow } from "@/lib/db-access";
 import type { PipelineConfig } from "@voicebot/core";
 import { PIPER_DE_VOICES } from "@/lib/piper-voices";
+import { XTTS_DE_VOICES } from "@/lib/xtts-voices";
 
 const field =
   "w-full rounded-md border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm outline-none focus:border-neutral-500";
@@ -199,7 +200,8 @@ export function BotEditor({ bot, documents }: { bot: Bot; documents: DocumentRow
                 setTts({ ...tts, provider: e.target.value as PipelineConfig["tts"]["provider"] })
               }
             >
-              <option value="local-piper">Piper (lokal)</option>
+              <option value="local-piper">Piper (lokal, CPU)</option>
+              <option value="local-xtts">XTTS-v2 (lokal, GPU – neural)</option>
               <option value="elevenlabs">ElevenLabs (Cloud)</option>
             </select>
           </div>
@@ -220,24 +222,36 @@ export function BotEditor({ bot, documents }: { bot: Bot; documents: DocumentRow
               value={tts.voice}
               onChange={(e) => setTts({ ...tts, voice: e.target.value })}
             >
-              <optgroup label="Weiblich">
-                {PIPER_DE_VOICES.filter((v) => v.gender === "weiblich").map((v) => (
-                  <option key={v.id} value={v.id}>
-                    {v.label}
-                  </option>
-                ))}
-              </optgroup>
-              <optgroup label="Männlich">
-                {PIPER_DE_VOICES.filter((v) => v.gender === "männlich").map((v) => (
-                  <option key={v.id} value={v.id}>
-                    {v.label}
-                  </option>
-                ))}
-              </optgroup>
-              {/* Eigene/ältere Stimme erhalten, falls nicht in der kuratierten Liste. */}
-              {!PIPER_DE_VOICES.some((v) => v.id === tts.voice) && (
-                <option value={tts.voice}>{tts.voice} (eigene)</option>
-              )}
+              {(() => {
+                // Stimmenliste je nach Provider: XTTS-Sprecher oder Piper-Stimmen.
+                const voices = tts.provider === "local-xtts" ? XTTS_DE_VOICES : PIPER_DE_VOICES;
+                return (
+                  <>
+                    <optgroup label="Weiblich">
+                      {voices
+                        .filter((v) => v.gender === "weiblich")
+                        .map((v) => (
+                          <option key={v.id} value={v.id}>
+                            {v.label}
+                          </option>
+                        ))}
+                    </optgroup>
+                    <optgroup label="Männlich">
+                      {voices
+                        .filter((v) => v.gender === "männlich")
+                        .map((v) => (
+                          <option key={v.id} value={v.id}>
+                            {v.label}
+                          </option>
+                        ))}
+                    </optgroup>
+                    {/* Eigene/ältere Stimme erhalten, falls nicht in der Liste. */}
+                    {!voices.some((v) => v.id === tts.voice) && (
+                      <option value={tts.voice}>{tts.voice} (eigene)</option>
+                    )}
+                  </>
+                );
+              })()}
             </select>
           </div>
           <div>

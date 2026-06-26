@@ -1,0 +1,15 @@
+fastapi>=0.115
+uvicorn[standard]>=0.34
+pydantic>=2
+python-dotenv>=1.0
+numpy>=1.24
+
+# Neurale TTS (XTTS-v2). coqui-tts 0.27.x nutzt isin_mps_friendly → transformers <5 nötig.
+coqui-tts>=0.27
+transformers>=4.57,<5
+
+# WICHTIG: PyTorch separat vom cu128-Index installieren (RTX 5080 = Blackwell sm_120).
+# torch 2.8 bewusst (ab 2.9 verlangt coqui-tts zusätzlich torchcodec/FFmpeg):
+#   pip install "torch==2.8.0" "torchaudio==2.8.0" --index-url https://download.pytorch.org/whl/cu128
+#
+# CPU-Fallback (langsam, nicht empfohlen): torch/torchaudio ohne --index-url, XTTS_DEVICE=cpu.

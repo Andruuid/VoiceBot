@@ -25,10 +25,12 @@ export const llmConfigSchema = z.object({
 });
 
 export const ttsConfigSchema = z.object({
-  provider: z.enum(["local-piper", "elevenlabs"]).default("local-piper"),
+  // local-piper: Piper (CPU). local-xtts: XTTS-v2 (GPU, neural). elevenlabs: Cloud (offen).
+  provider: z.enum(["local-piper", "local-xtts", "elevenlabs"]).default("local-piper"),
+  // Piper: Stimmdatei (z.B. de_DE-thorsten-high). XTTS: Sprechername (z.B. "Ana Florence").
   voice: z.string().default("de_DE-thorsten-high"),
   language: z.string().default("de"),
-  /** Nur für local-piper: URL des FastAPI-Dienstes. */
+  /** Nur für lokale Dienste (Piper/XTTS): URL des FastAPI-Dienstes. */
   serviceUrl: z.string().url().optional(),
 });
 

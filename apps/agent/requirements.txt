@@ -2,8 +2,10 @@
 # Bewusste Abweichung von der ursprünglichen Spec (TS-Agent): das reifere Agents-SDK
 # ist Python und passt zu den STT/TTS-Diensten + Phase-5-Finetuning (siehe Spezifikation §11).
 
-livekit-agents>=1.0
-livekit-plugins-openai>=1.0
-livekit-plugins-silero>=1.0
+# >=1.6.4: fixt den Rust-Teardown-Panic (webrtc-sys "malformed serialized RtcError",
+# rtc-Bindings <=1.1.9), der den Agent-Prozess beim Auflegen/Barge-in abstürzen ließ.
+livekit-agents>=1.6.4
+livekit-plugins-openai>=1.6.4
+livekit-plugins-silero>=1.6.4
 httpx>=0.27
 python-dotenv>=1.0

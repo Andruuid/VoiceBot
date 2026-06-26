@@ -35,6 +35,7 @@ logger = logging.getLogger("voicebot.agent")
 WEB_BASE_URL = os.getenv("WEB_BASE_URL", "http://localhost:3100").rstrip("/")
 STT_SERVICE_URL = os.getenv("STT_SERVICE_URL", "http://localhost:8001")
 TTS_SERVICE_URL = os.getenv("TTS_SERVICE_URL", "http://localhost:8002")
+XTTS_SERVICE_URL = os.getenv("XTTS_SERVICE_URL", "http://localhost:8003")
 
 
 def _bot_id_from_room(room: rtc.Room) -> str | None:
@@ -85,8 +86,13 @@ def _build_stt(stt_cfg: dict) -> WhisperSTT:
 
 
 def _build_tts(tts_cfg: dict) -> PiperTTS:
-    """TTS gemäß Bot-Config. Cloud (elevenlabs) noch nicht implementiert → lokaler Fallback."""
+    """TTS gemäß Bot-Config. PiperTTS ist ein generischer HTTP-TTS-Client (postet
+    {text, voice} → WAV) und bedient daher Piper (:8002) UND XTTS (:8003) gleich.
+    Cloud (elevenlabs) noch nicht implementiert → lokaler Piper-Fallback."""
     provider = tts_cfg.get("provider", "local-piper")
+    if provider == "local-xtts":
+        base_url = tts_cfg.get("serviceUrl") or XTTS_SERVICE_URL
+        return PiperTTS(base_url=base_url, voice=tts_cfg.get("voice", "Ana Florence"))
     base_url = tts_cfg.get("serviceUrl") or TTS_SERVICE_URL
     if provider != "local-piper":
         logger.warning("TTS-Provider '%s' noch nicht implementiert — nutze lokalen Piper.", provider)
@@ -111,6 +117,10 @@ async def entrypoint(ctx: JobContext) -> None:
         stt=_build_stt(pipeline.get("stt", {})),
         llm=_build_llm(pipeline.get("llm", {})),
         tts=_build_tts(pipeline.get("tts", {})),
+        # Latenz-Tuning: LLM vorab starten + schneller auf Sprechpausen reagieren.
+        preemptive_generation=True,   # generiert, sobald STT fertig ist (vor finalem Commit)
+        min_endpointing_delay=0.2,    # Default 0.5 — kürzere Wartezeit nach dem Sprechen
+        max_endpointing_delay=2.0,    # Default 6.0 — bei unsicherem End-of-Turn max. 2 s warten
     )
 
     await session.start(agent=Agent(instructions=system_prefix), room=ctx.room)
