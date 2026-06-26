@@ -20,8 +20,16 @@ __pycache__/
 .venv/
 venv/
 
-# heruntergeladene Modell-Assets (Piper-Stimmen etc.)
+# heruntergeladene Modell-Assets (NICHT ins Repo committen — kommen aus HF-Cache/Download)
 services/tts-piper/voices/
+services/stt-whisper/models/
+**/models/
+*.gguf
+*.onnx
+*.bin
+*.safetensors
+*.pt
+*.ckpt
 
 # data / volumes
 postgres-data/

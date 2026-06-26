@@ -1,9 +1,14 @@
 fastapi>=0.115
 uvicorn[standard]>=0.34
+python-dotenv>=1.0   # Root-.env laden (WHISPER_MODEL/BEAM/PROMPT)
 
 # Phase 2 — CPU-first: faster-whisper nutzt CTranslate2, KEIN PyTorch/CUDA nötig.
 faster-whisper>=1.1
 
-# GPU/Schweizerdeutsch später (RTX 5080 = Blackwell sm_120):
-#   - faster-whisper mit device="cuda" braucht passende CTranslate2/cuDNN-Wheels.
-#   - Eigener ZH-Whisper-Finetune dann via WHISPER_MODEL einhängen (siehe Spezifikation §9).
+# GPU (RTX 5080 = Blackwell sm_120) — optional, für WHISPER_DEVICE=cuda:
+#   CTranslate2 4.8 hat CUDA-Support, braucht aber die CUDA-12-Runtime-DLLs (cuBLAS/cuDNN).
+#   Diese ~1,2 GB Wheels NICHT für CPU-only-Setups installieren:
+#     pip install nvidia-cublas-cu12 nvidia-cudnn-cu12
+#   main.py registriert deren DLL-Verzeichnisse automatisch (_register_cuda_dll_dirs).
+#   Erster Inferenz-Aufruf kompiliert die sm_120-Kernels per JIT (~17 s) → Warmup beim Start.
+#   Eigener ZH-Whisper-Finetune später via WHISPER_MODEL einhängen (siehe Spezifikation §9).
